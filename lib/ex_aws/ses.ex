@@ -50,7 +50,7 @@ defmodule ExAws.SES do
         "EmailIdentity" => identity,
         "ConfigurationSetName" => opts[:configuration_set_name],
         "DkimSigningAttributes" => opts[:dkim_signing_attributes],
-        "Tags" => opts[:tags]
+        "Tags" => format_tags_v2(opts[:tags])
       })
 
     :post
@@ -1062,6 +1062,9 @@ defmodule ExAws.SES do
       Map.merge(acc, flatten_attrs(tag, key))
     end)
   end
+
+  defp format_tags_v2(tags),
+    do: Enum.map(tags, fn {k, v} -> %{"Key" => to_string(k), "Value" => to_string(v)} end)
 
   ## Request
   ######################
