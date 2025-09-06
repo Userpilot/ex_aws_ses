@@ -73,6 +73,21 @@ defmodule ExAws.SES do
     request_v2(:get, "identities/#{encoded_identity}")
   end
 
+  @type list_email_identities_opt :: {:page_size, pos_integer} | {:next_token, String.t()}
+  @doc """
+  List email identities using the SES V2 API.
+  See https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_ListEmailIdentities.html
+
+  ## Examples
+
+      ExAws.SES.list_email_identities([page_size: 100, next_token: nil])
+  """
+  @spec list_email_identities(opts :: [] | [list_email_identities_opt]) :: ExAws.Operation.JSON.t()
+  def list_email_identities(opts \\ []) do
+    params = build_opts(opts, [:page_size, :next_token])
+    request_v2(:get, "identities?#{URI.encode_query(params)}")
+  end
+
   @doc """
   Used to associate a configuration set with an email identity.
   See https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_PutEmailIdentityConfigurationSetAttributes.html
