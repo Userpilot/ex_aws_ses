@@ -204,6 +204,20 @@ defmodule ExAws.SES do
     request(:get_identity_verification_attributes, params)
   end
 
+  ## Configuration sets
+  ######################
+
+  @doc """
+  Fetch configuration set from configuration set name via the SES V2 API.
+  See https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_GetConfigurationSet.html
+  """
+  @spec get_configuration_set(identity :: binary) :: ExAws.Operation.JSON.t()
+  def get_configuration_set(configuration_set_name) do
+    encoded_configuration_set_name = ExAws.Request.Url.uri_encode(configuration_set_name)
+
+    request_v2(:get, "configuration-sets/#{encoded_configuration_set_name}")
+  end
+
   @type list_configuration_sets_opt ::
           {:max_items, pos_integer}
           | {:next_token, String.t()}
