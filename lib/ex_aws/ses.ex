@@ -11,6 +11,149 @@ defmodule ExAws.SES do
   @service :ses
   @v2_path "/v2/email"
 
+  @type create_email_identity_opt ::
+          {:configuration_set_name, String.t()}
+          | {:dkim_signing_attributes,
+             %{
+               DomainSigningAttributesOrigin: String.t(),
+               DomainSigningPrivateKey: String.t(),
+               DomainSigningSelector: String.t(),
+               NextSigningKeyLength: String.t()
+             }}
+          | {:tags, %{(String.t() | atom) => String.t()}}
+
+  @doc """
+  Create an Email identity list via the SES V2 API.
+  See https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_CreateEmailIdentity.html.
+
+  ## Examples
+
+      ExAws.SES.create_email_identity(
+        "mydomain.com",
+        [
+          configuration_set_name: "my_configuration_set",
+          dkim_signing_attributes: %{
+            DomainSigningAttributesOrigin: "AWS_SES",
+            DomainSigningPrivateKey: "my_private_key",
+            DomainSigningSelector: "my_selector",
+            NextSigningKeyLength: "2048"
+          },
+          tags: [%{"Key" => "environment", "Value" => "test"}]
+        ]
+      )
+
+  """
+  @spec create_email_identity(identity :: binary, opts :: [] | [create_email_identity_opt]) :: ExAws.Operation.JSON.t()
+  def create_email_identity(identity, opts \\ []) do
+    data =
+      prune_map(%{
+        "EmailIdentity" => identity,
+        "ConfigurationSetName" => opts[:configuration_set_name],
+        "DkimSigningAttributes" => opts[:dkim_signing_attributes],
+        "Tags" => format_tags_v2(opts[:tags])
+      })
+
+    :post
+    |> request_v2("identities")
+    |> Map.put(:data, data)
+  end
+
+  @doc """
+  Provides information about a specific identity via the SES V2 API.
+  See https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_GetEmailIdentity.html
+
+  ## Examples
+
+      ExAws.SES.get_email_identity("mydomain.com")
+  """
+  @spec get_email_identity(identity :: binary) :: ExAws.Operation.JSON.t()
+  def get_email_identity(identity) do
+    encoded_identity = ExAws.Request.Url.uri_encode(identity)
+
+    request_v2(:get, "identities/#{encoded_identity}")
+  end
+
+  @type list_email_identities_opt :: {:page_size, pos_integer} | {:next_token, String.t()}
+  @doc """
+  List email identities using the SES V2 API.
+  See https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_ListEmailIdentities.html
+
+  ## Examples
+
+      ExAws.SES.list_email_identities([page_size: 100, next_token: nil])
+  """
+  @spec list_email_identities(opts :: [] | [list_email_identities_opt]) :: ExAws.Operation.JSON.t()
+  def list_email_identities(opts \\ []) do
+    params = build_opts(opts, [:page_size, :next_token])
+    request_v2(:get, "identities?#{URI.encode_query(params)}")
+  end
+
+  @doc """
+  Used to associate a configuration set with an email identity.
+  See https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_PutEmailIdentityConfigurationSetAttributes.html
+  """
+
+  @spec put_email_identity_configuration_set_attributes(identity :: binary, configuration_set_name :: binary) ::
+          ExAws.Operation.JSON.t()
+  def put_email_identity_configuration_set_attributes(identity, configuration_set_name) do
+    encoded_identity = ExAws.Request.Url.uri_encode(identity)
+
+    data = prune_map(%{"ConfigurationSetName" => configuration_set_name})
+
+    request_v2(:put, "identities/#{encoded_identity}/configuration-set")
+    |> Map.put(:data, data)
+  end
+
+  @type put_email_identity_mail_from_attributes_opt ::
+          {:BehaviorOnMxFailure, String.t()} | {:MailFromDomain, String.t()}
+
+  @doc """
+  Used to enable or disable the custom Mail-From domain configuration for an email identity via the SES V2 API.
+  See https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_PutEmailIdentityMailFromAttributes.html
+
+  ## Examples
+
+      ExAws.SES.put_email_identity_mail_from_attributes(
+        "mydomain.com",
+        [
+          BehaviorOnMxFailure: "USE_DEFAULT_VALUE" || "REJECT_MESSAGE",
+          MailFromDomain: "subdomain.mydomain.com"
+        ]
+      )
+  """
+  @spec put_email_identity_mail_from_attributes(
+          identity :: binary,
+          opts :: [put_email_identity_mail_from_attributes_opt]
+        ) :: ExAws.Operation.JSON.t()
+  def put_email_identity_mail_from_attributes(identity, opts) do
+    encoded_identity = ExAws.Request.Url.uri_encode(identity)
+
+    data =
+      prune_map(%{
+        "BehaviorOnMxFailure" => opts[:BehaviorOnMxFailure],
+        "MailFromDomain" => opts[:MailFromDomain]
+      })
+
+    :put
+    |> request_v2("identities/#{encoded_identity}/mail-from")
+    |> Map.put(:data, data)
+  end
+
+  @doc """
+  Deletes an email identity via the SES V2 API.
+  See https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_DeleteEmailIdentity.html
+
+  ## Examples
+
+      ExAws.SES.delete_email_identity("mydomain.com")
+  """
+  @spec delete_email_identity(identity :: binary) :: ExAws.Operation.JSON.t()
+  def delete_email_identity(identity) do
+    encoded_identity = ExAws.Request.Url.uri_encode(identity)
+
+    request_v2(:delete, "identities/#{encoded_identity}")
+  end
+
   @doc """
   Verifies an email address.
   """
@@ -59,6 +202,20 @@ defmodule ExAws.SES do
   def get_identity_verification_attributes(identities) when is_list(identities) do
     params = format_member_attribute({:identities, identities})
     request(:get_identity_verification_attributes, params)
+  end
+
+  ## Configuration sets
+  ######################
+
+  @doc """
+  Fetch configuration set from configuration set name via the SES V2 API.
+  See https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_GetConfigurationSet.html
+  """
+  @spec get_configuration_set(identity :: binary) :: ExAws.Operation.JSON.t()
+  def get_configuration_set(configuration_set_name) do
+    encoded_configuration_set_name = ExAws.Request.Url.uri_encode(configuration_set_name)
+
+    request_v2(:get, "configuration-sets/#{encoded_configuration_set_name}")
   end
 
   @type list_configuration_sets_opt ::
@@ -387,11 +544,10 @@ defmodule ExAws.SES do
       |> put_if_not_nil("Html", html)
       |> put_if_not_nil("Text", text)
 
-    params =
-      %{
-        "TemplateName" => template_name,
-        "TemplateContent" => template_content
-      }
+    params = %{
+      "TemplateName" => template_name,
+      "TemplateContent" => template_content
+    }
 
     request_v2(:post, "templates")
     |> Map.put(:data, params)
@@ -935,6 +1091,9 @@ defmodule ExAws.SES do
       Map.merge(acc, flatten_attrs(tag, key))
     end)
   end
+
+  defp format_tags_v2(tags),
+    do: Enum.map(tags, fn {k, v} -> %{"Key" => to_string(k), "Value" => to_string(v)} end)
 
   ## Request
   ######################

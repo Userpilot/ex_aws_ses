@@ -11,26 +11,27 @@ if Code.ensure_loaded?(SweetXml) do
     end
 
     def parse({:ok, %{body: xml} = resp}, :verify_domain_identity) do
-      parsed_body = SweetXml.xpath(xml, ~x"//VerifyDomainIdentityResponse",
-       verification_token: ~x"./VerifyDomainIdentityResult/VerificationToken/text()"s,
-       request_id: request_id_xpath()
-      )
+      parsed_body =
+        SweetXml.xpath(xml, ~x"//VerifyDomainIdentityResponse",
+          verification_token: ~x"./VerifyDomainIdentityResult/VerificationToken/text()"s,
+          request_id: request_id_xpath()
+        )
 
       {:ok, Map.put(resp, :body, parsed_body)}
     end
 
     def parse({:ok, %{body: xml} = resp}, :verify_domain_dkim) do
-      parsed_body = SweetXml.xpath(xml, ~x"//VerifyDomainDkimResponse",
-       dkim_tokens: [
-        ~x"./VerifyDomainDkimResult",
-        members: ~x"./DkimTokens/member/text()"ls
-       ],
-       request_id: request_id_xpath()
-      )
+      parsed_body =
+        SweetXml.xpath(xml, ~x"//VerifyDomainDkimResponse",
+          dkim_tokens: [
+            ~x"./VerifyDomainDkimResult",
+            members: ~x"./DkimTokens/member/text()"ls
+          ],
+          request_id: request_id_xpath()
+        )
 
       {:ok, Map.put(resp, :body, parsed_body)}
     end
-
 
     def parse({:ok, %{body: xml} = resp}, :get_identity_verification_attributes) do
       parsed_body =
@@ -57,7 +58,9 @@ if Code.ensure_loaded?(SweetXml) do
             ~x"./ListIdentitiesResult",
             members: ~x"./Identities/member/text()"ls,
             next_token: ~x"./NextToken/text()"so
-          ], #TODO: Remove this key in the next major version, 3.x.x
+          ],
+
+          # TODO: Remove this key in the next major version, 3.x.x
           identities: [
             ~x"./ListIdentitiesResult",
             members: ~x"./Identities/member/text()"ls,
@@ -201,20 +204,21 @@ if Code.ensure_loaded?(SweetXml) do
     end
 
     def parse({:ok, %{body: xml} = resp}, :describe_receipt_rule_set) do
-      parsed_body = SweetXml.xpath(xml, ~x"//DescribeReceiptRuleSetResponse",
-       rules: [
-        ~x"./DescribeReceiptRuleSetResult",
-        members: [
-          ~x"./Rules/member"l,
-          enabled: ~x"./Enabled/text()"so |> transform_to_boolean(),
-          name: ~x"./Name/text()"s,
-          recipients: ~x"./Recipients/member/text()"ls,
-          scan_enabled: ~x"./ScanEnabled/text()"so  |> transform_to_boolean(),
-          tls_policy: ~x"./TlsPolicy/text()"so,
-        ],
-       ],
-       request_id: request_id_xpath()
-      )
+      parsed_body =
+        SweetXml.xpath(xml, ~x"//DescribeReceiptRuleSetResponse",
+          rules: [
+            ~x"./DescribeReceiptRuleSetResult",
+            members: [
+              ~x"./Rules/member"l,
+              enabled: ~x"./Enabled/text()"so |> transform_to_boolean(),
+              name: ~x"./Name/text()"s,
+              recipients: ~x"./Recipients/member/text()"ls,
+              scan_enabled: ~x"./ScanEnabled/text()"so |> transform_to_boolean(),
+              tls_policy: ~x"./TlsPolicy/text()"so
+            ]
+          ],
+          request_id: request_id_xpath()
+        )
 
       {:ok, Map.put(resp, :body, parsed_body)}
     end
